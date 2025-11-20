@@ -38,6 +38,7 @@ jobs:
           sam deploy \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
+            --force-upload \
             --stack-name ${{ secrets.STACK_NAME }} \
             --s3-bucket ${{ secrets.SAM_ARTIFACTS_BUCKET }} \
             --capabilities CAPABILITY_IAM \
