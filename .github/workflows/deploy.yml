@@ -44,6 +44,7 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --region ${{ secrets.AWS_REGION }} \
             --parameter-overrides \
+              Environment=dev \
               PostgresHost=${{ secrets.POSTGRES_HOST }} \
               PostgresPort=${{ secrets.POSTGRES_PORT }} \
               PostgresDatabase=${{ secrets.POSTGRES_DATABASE }} \
