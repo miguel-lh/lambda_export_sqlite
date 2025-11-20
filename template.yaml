@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda para exportar datos de PostgreSQL a SQLite
+
+Globals:
+  Function:
+    Timeout: 300  # 5 minutos para consultas grandes
+    MemorySize: 1024
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        POSTGRES_HOST: !Ref PostgresHost
+        POSTGRES_PORT: !Ref PostgresPort
+        POSTGRES_DATABASE: !Ref PostgresDatabase
+        POSTGRES_USER: !Ref PostgresUser
+        POSTGRES_PASSWORD: !Ref PostgresPassword
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
+
+  PostgresHost:
+    Type: String
+    Description: PostgreSQL host endpoint
+    NoEcho: false
+
+  PostgresPort:
+    Type: Number
+    Default: 5432
+    Description: PostgreSQL port
+
+  PostgresDatabase:
+    Type: String
+    Description: PostgreSQL database name
+
+  PostgresUser:
+    Type: String
+    Description: PostgreSQL username
+    NoEcho: true
+
+  PostgresPassword:
+    Type: String
+    Description: PostgreSQL password
+    NoEcho: true
+
+Resources:
+  ExportToSQLiteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${Environment}-export-to-sqlite'
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Description: Exporta datos de PostgreSQL a archivo SQLite
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /export/{tenant_id}
+            Method: get
+            RestApiId: !Ref ExportApi
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: '*'
+      Tags:
+        Project: SQLiteExport
+        Environment: !Ref Environment
+
+  ExportApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${Environment}-export-api'
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET, OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+      BinaryMediaTypes:
+        - application/octet-stream
+        - application/x-sqlite3
+
+  # CloudWatch Log Group para la función
+  ExportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ExportToSQLiteFunction}'
+      RetentionInDays: 7
+
+Outputs:
+  ExportToSQLiteFunctionArn:
+    Description: ARN de la función Lambda
+    Value: !GetAtt ExportToSQLiteFunction.Arn
+    Export:
+      Name: !Sub '${Environment}-ExportToSQLiteFunctionArn'
+
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ExportApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/export/{tenant_id}'
+    Export:
+      Name: !Sub '${Environment}-ExportApiUrl'
+
+  FunctionName:
+    Description: Nombre de la función Lambda
+    Value: !Ref ExportToSQLiteFunction

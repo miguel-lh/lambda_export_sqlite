@@ -1,0 +1,59 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build SAM application
+        run: sam build --use-container
+
+      - name: Deploy SAM application
+        run: |
+          sam deploy \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --stack-name ${{ secrets.STACK_NAME }} \
+            --s3-bucket ${{ secrets.SAM_ARTIFACTS_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            --region ${{ secrets.AWS_REGION }} \
+            --parameter-overrides \
+              PostgresHost=${{ secrets.POSTGRES_HOST }} \
+              PostgresPort=${{ secrets.POSTGRES_PORT }} \
+              PostgresDatabase=${{ secrets.POSTGRES_DATABASE }} \
+              PostgresUser=${{ secrets.POSTGRES_USER }} \
+              PostgresPassword=${{ secrets.POSTGRES_PASSWORD }}
+
+      - name: Get API endpoint
+        run: |
+          echo "Deployment complete!"
+          aws cloudformation describe-stacks \
+            --stack-name ${{ secrets.STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ExportApi`].OutputValue' \
+            --output text \
+            --region ${{ secrets.AWS_REGION }}

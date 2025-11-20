@@ -1,0 +1,11 @@
+{
+  "ExportToSQLiteFunction": {
+    "POSTGRES_HOST": "snapshots081020232.crgij3iw0xe0.us-west-2.rds.amazonaws.com",
+    "POSTGRES_PORT": 5432,
+    "POSTGRES_DATABASE": "production",
+    "POSTGRES_USER": "af_master",
+    "POSTGRES_PASSWORD": "af_master9021A",
+    "LOG_LEVEL": "INFO",
+    "ENVIRONMENT": "dev"
+  }
+}

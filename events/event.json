@@ -1,0 +1,17 @@
+{
+  "resource": "/export/{tenant_id}",
+  "path": "/export/123",
+  "httpMethod": "GET",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  },
+  "pathParameters": {
+    "tenant_id": "123"
+  },
+  "requestContext": {
+    "requestId": "test-request-id",
+    "stage": "dev"
+  },
+  "isBase64Encoded": false
+}
