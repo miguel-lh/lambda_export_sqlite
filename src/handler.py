@@ -80,16 +80,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': {
                 'Content-Type': 'application/octet-stream',
                 'Content-Disposition': f'attachment; filename="tenant_{tenant_id}.sqlite"',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': '*',
+                'X-Tenant-Id': str(tenant_id),
+                'X-File-Size': str(result.file_size),
+                'X-Execution-Time-Ms': str(result.execution_time_ms)
             },
             'body': sqlite_base64,
-            'isBase64Encoded': True,
-            'metadata': {
-                'tenant_id': tenant_id,
-                'file_size': result.file_size,
-                'records_exported': result.records_exported,
-                'execution_time_ms': result.execution_time_ms
-            }
+            'isBase64Encoded': True
         }
 
     except ValueError as e:
