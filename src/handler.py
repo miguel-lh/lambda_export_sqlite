@@ -7,11 +7,11 @@ import os
 import base64
 from typing import Dict, Any
 
-from src.config.settings import get_settings
-from src.utils.logger import setup_logger
-from src.infrastructure.postgres_repository import PostgresRepository
-from src.infrastructure.sqlite_builder import SQLiteBuilder
-from src.application.export_service import ExportService
+from config.settings import get_settings
+from utils.logger import setup_logger
+from infrastructure.postgres_repository import PostgresRepository
+from infrastructure.sqlite_builder import SQLiteBuilder
+from application.export_service import ExportService
 
 # Configurar logger
 logger = setup_logger(__name__)

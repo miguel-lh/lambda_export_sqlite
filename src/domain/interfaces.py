@@ -6,7 +6,7 @@ Las capas de alto nivel dependen de abstracciones, no de implementaciones concre
 from abc import ABC, abstractmethod
 from typing import List
 
-from src.domain.models import (
+from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
     ClientListPrice, Location, Cobranza, CobranzaDetail
 )

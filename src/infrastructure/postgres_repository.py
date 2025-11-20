@@ -10,8 +10,8 @@ from typing import List, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from src.domain.interfaces import IDataRepository
-from src.domain.models import (
+from domain.interfaces import IDataRepository
+from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
     ClientListPrice, Location, Cobranza, CobranzaDetail
 )

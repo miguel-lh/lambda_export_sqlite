@@ -6,8 +6,8 @@ import logging
 import sqlite3
 from typing import List, Optional
 
-from src.domain.interfaces import ISQLiteBuilder
-from src.domain.models import (
+from domain.interfaces import ISQLiteBuilder
+from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
     ClientListPrice, Location, Cobranza, CobranzaDetail
 )
