@@ -1,0 +1,9 @@
+# Database drivers
+psycopg2-binary==2.9.9
+
+# Utilities
+python-dotenv==1.0.0
+
+# Data validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
