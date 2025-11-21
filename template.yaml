@@ -5,7 +5,7 @@ Description: Lambda para exportar datos de PostgreSQL a SQLite
 Globals:
   Function:
     Timeout: 300  # 5 minutos para consultas grandes
-    MemorySize: 1024
+    MemorySize: 2048  # Incrementado de 1024MB a 2048MB para mejor rendimiento
     Runtime: python3.11
     Architectures:
       - x86_64

@@ -7,6 +7,7 @@ import logging
 import os
 import time
 from typing import Dict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from domain.interfaces import IDataRepository, ISQLiteBuilder
 from domain.models import ExportResult
@@ -59,44 +60,48 @@ class ExportService:
             logger.info(f"Conectando a PostgreSQL para tenant {tenant_id}")
             self._connect_to_postgres()
 
-            # Paso 2: Obtener datos de PostgreSQL
-            logger.info("Obteniendo datos de PostgreSQL")
-            customers = self._fetch_data(
-                "customers",
-                lambda: self.data_repository.get_customers_by_tenant(tenant_id)
-            )
-            products = self._fetch_data(
-                "products",
-                lambda: self.data_repository.get_products_by_tenant(tenant_id)
-            )
-            bank_accounts = self._fetch_data(
-                "bank_accounts",
-                lambda: self.data_repository.get_bank_accounts_by_tenant(tenant_id)
-            )
-            list_prices = self._fetch_data(
-                "list_prices",
-                lambda: self.data_repository.get_list_prices_by_tenant(tenant_id)
-            )
-            list_price_details = self._fetch_data(
-                "list_price_details",
-                lambda: self.data_repository.get_list_price_details_by_tenant(tenant_id)
-            )
-            client_list_prices = self._fetch_data(
-                "client_list_prices",
-                lambda: self.data_repository.get_client_list_prices_by_tenant(tenant_id)
-            )
-            locations = self._fetch_data(
-                "locations",
-                lambda: self.data_repository.get_locations_by_tenant(tenant_id)
-            )
-            cobranzas = self._fetch_data(
-                "cobranzas",
-                lambda: self.data_repository.get_cobranzas_by_tenant(tenant_id)
-            )
-            cobranza_details = self._fetch_data(
-                "cobranza_details",
-                lambda: self.data_repository.get_cobranza_details_by_tenant(tenant_id)
-            )
+            # Paso 2: Obtener datos de PostgreSQL en paralelo
+            logger.info("Obteniendo datos de PostgreSQL en paralelo")
+
+            # Definir todas las queries a ejecutar
+            fetch_tasks = {
+                'customers': lambda: self.data_repository.get_customers_by_tenant(tenant_id),
+                'products': lambda: self.data_repository.get_products_by_tenant(tenant_id),
+                'bank_accounts': lambda: self.data_repository.get_bank_accounts_by_tenant(tenant_id),
+                'list_prices': lambda: self.data_repository.get_list_prices_by_tenant(tenant_id),
+                'list_price_details': lambda: self.data_repository.get_list_price_details_by_tenant(tenant_id),
+                'client_list_prices': lambda: self.data_repository.get_client_list_prices_by_tenant(tenant_id),
+                'locations': lambda: self.data_repository.get_locations_by_tenant(tenant_id),
+                'cobranzas': lambda: self.data_repository.get_cobranzas_by_tenant(tenant_id),
+                'cobranza_details': lambda: self.data_repository.get_cobranza_details_by_tenant(tenant_id)
+            }
+
+            # Ejecutar queries en paralelo
+            results = {}
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_entity = {
+                    executor.submit(self._fetch_data, entity_name, fetch_fn): entity_name
+                    for entity_name, fetch_fn in fetch_tasks.items()
+                }
+
+                for future in as_completed(future_to_entity):
+                    entity_name = future_to_entity[future]
+                    try:
+                        results[entity_name] = future.result()
+                    except Exception as e:
+                        logger.error(f"Error obteniendo {entity_name}: {e}")
+                        raise
+
+            # Asignar resultados
+            customers = results['customers']
+            products = results['products']
+            bank_accounts = results['bank_accounts']
+            list_prices = results['list_prices']
+            list_price_details = results['list_price_details']
+            client_list_prices = results['client_list_prices']
+            locations = results['locations']
+            cobranzas = results['cobranzas']
+            cobranza_details = results['cobranza_details']
 
             # Registrar conteos
             records_exported = {

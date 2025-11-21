@@ -36,7 +36,26 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             self.file_path = file_path
             self.connection = sqlite3.connect(file_path)
-            logger.info(f"Base de datos SQLite creada: {file_path}")
+
+            # Optimizaciones de rendimiento para SQLite
+            cursor = self.connection.cursor()
+
+            # WAL mode para mejor concurrencia y rendimiento
+            cursor.execute("PRAGMA journal_mode=WAL")
+
+            # Reducir sincronización para mejor rendimiento (seguro en Lambda)
+            cursor.execute("PRAGMA synchronous=NORMAL")
+
+            # Aumentar cache size (10MB)
+            cursor.execute("PRAGMA cache_size=-10000")
+
+            # Optimizar para escritura
+            cursor.execute("PRAGMA temp_store=MEMORY")
+
+            # Locking mode para mejor rendimiento en escritura única
+            cursor.execute("PRAGMA locking_mode=EXCLUSIVE")
+
+            logger.info(f"Base de datos SQLite creada con optimizaciones: {file_path}")
         except sqlite3.Error as e:
             logger.error(f"Error creando base de datos SQLite: {e}")
             raise
@@ -236,7 +255,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_customers(self, customers: List[Customer]) -> int:
-        """Inserta clientes en la base de datos."""
+        """Inserta clientes en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -247,18 +266,9 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for customer in customers:
-                cursor.execute("""
-                    INSERT INTO Customer (
-                        Id, Slug, Name, Tel, Email, Code, Sequence, Format,
-                        TypeSale, WayToPay, Street, ExtNumber, IntNumber, Suburb,
-                        CodePostal, City, State, Country, Lat, Lng, Geofence,
-                        SequenceTimesFrom1, SequenceTimesUpTo1, SequenceTimesFrom2,
-                        SequenceTimesUpTo2, SequenceTimesFrom3, SequenceTimesUpTo3,
-                        IsPaySun, IsPayMon, IsPayTues, IsPayWed, IsPayThurs, IsPayFri,
-                        IsPaySat, CodeNetsuit, CreditLimit, Checked, Deuda
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            customer_data = [
+                (
                     customer.id,
                     customer.slug,
                     customer.name,
@@ -297,11 +307,26 @@ class SQLiteBuilder(ISQLiteBuilder):
                     customer.credit_limit,
                     1 if customer.checked else 0,
                     customer.deuda
-                ))
+                )
+                for customer in customers
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO Customer (
+                    Id, Slug, Name, Tel, Email, Code, Sequence, Format,
+                    TypeSale, WayToPay, Street, ExtNumber, IntNumber, Suburb,
+                    CodePostal, City, State, Country, Lat, Lng, Geofence,
+                    SequenceTimesFrom1, SequenceTimesUpTo1, SequenceTimesFrom2,
+                    SequenceTimesUpTo2, SequenceTimesFrom3, SequenceTimesUpTo3,
+                    IsPaySun, IsPayMon, IsPayTues, IsPayWed, IsPayThurs, IsPayFri,
+                    IsPaySat, CodeNetsuit, CreditLimit, Checked, Deuda
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, customer_data)
 
             self.connection.commit()
             count = len(customers)
-            logger.info(f"Insertados {count} customers")
+            logger.info(f"Insertados {count} customers en batch")
             return count
 
         except sqlite3.Error as e:
@@ -310,7 +335,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_products(self, products: List[Product]) -> int:
-        """Inserta productos en la base de datos."""
+        """Inserta productos en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -321,12 +346,9 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for product in products:
-                cursor.execute("""
-                    INSERT INTO Product (
-                        Id, Sku, Name, Description, BardCode, Type, Brand, Category
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            product_data = [
+                (
                     product.id,
                     product.sku,
                     product.name,
@@ -335,11 +357,20 @@ class SQLiteBuilder(ISQLiteBuilder):
                     product.type,
                     product.brand,
                     product.category
-                ))
+                )
+                for product in products
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO Product (
+                    Id, Sku, Name, Description, BardCode, Type, Brand, Category
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, product_data)
 
             self.connection.commit()
             count = len(products)
-            logger.info(f"Insertados {count} products")
+            logger.info(f"Insertados {count} products en batch")
             return count
 
         except sqlite3.Error as e:
@@ -348,7 +379,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_bank_accounts(self, bank_accounts: List[BankAccount]) -> int:
-        """Inserta cuentas bancarias en la base de datos."""
+        """Inserta cuentas bancarias en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -359,22 +390,28 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for account in bank_accounts:
-                cursor.execute("""
-                    INSERT INTO BankAccount (
-                        Id, Name, BankName, Number, AccountingAccountName
-                    ) VALUES (?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            account_data = [
+                (
                     account.id,
                     account.name,
                     account.bank_name,
                     account.number,
                     account.accounting_account_name
-                ))
+                )
+                for account in bank_accounts
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO BankAccount (
+                    Id, Name, BankName, Number, AccountingAccountName
+                ) VALUES (?, ?, ?, ?, ?)
+            """, account_data)
 
             self.connection.commit()
             count = len(bank_accounts)
-            logger.info(f"Insertados {count} bank accounts")
+            logger.info(f"Insertados {count} bank accounts en batch")
             return count
 
         except sqlite3.Error as e:
@@ -383,7 +420,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_list_prices(self, list_prices: List[ListPrice]) -> int:
-        """Inserta listas de precios en la base de datos."""
+        """Inserta listas de precios en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -394,22 +431,28 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for list_price in list_prices:
-                cursor.execute("""
-                    INSERT INTO ListPrice (
-                        Id, Name, Max, Min, CustomerSync
-                    ) VALUES (?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            list_price_data = [
+                (
                     list_price.id,
                     list_price.name,
                     list_price.max,
                     list_price.min,
                     list_price.customer_sync
-                ))
+                )
+                for list_price in list_prices
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO ListPrice (
+                    Id, Name, Max, Min, CustomerSync
+                ) VALUES (?, ?, ?, ?, ?)
+            """, list_price_data)
 
             self.connection.commit()
             count = len(list_prices)
-            logger.info(f"Insertados {count} list prices")
+            logger.info(f"Insertados {count} list prices en batch")
             return count
 
         except sqlite3.Error as e:
@@ -418,7 +461,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_list_price_details(self, list_price_details: List[ListPriceDetail]) -> int:
-        """Inserta detalles de listas de precios en la base de datos."""
+        """Inserta detalles de listas de precios en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -429,21 +472,27 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for detail in list_price_details:
-                cursor.execute("""
-                    INSERT INTO ListPriceDetail (
-                        Id, IdPriceList, IdProduct, Price
-                    ) VALUES (?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            detail_data = [
+                (
                     detail.id,
                     detail.id_price_list,
                     detail.id_product,
                     detail.price
-                ))
+                )
+                for detail in list_price_details
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO ListPriceDetail (
+                    Id, IdPriceList, IdProduct, Price
+                ) VALUES (?, ?, ?, ?)
+            """, detail_data)
 
             self.connection.commit()
             count = len(list_price_details)
-            logger.info(f"Insertados {count} list price details")
+            logger.info(f"Insertados {count} list price details en batch")
             return count
 
         except sqlite3.Error as e:
@@ -452,7 +501,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_client_list_prices(self, client_list_prices: List[ClientListPrice]) -> int:
-        """Inserta relaciones cliente-lista de precios en la base de datos."""
+        """Inserta relaciones cliente-lista de precios en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -463,20 +512,26 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for client_list_price in client_list_prices:
-                cursor.execute("""
-                    INSERT INTO ClientListPrice (
-                        Id, IdClient, IdListPrice
-                    ) VALUES (?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            client_list_price_data = [
+                (
                     client_list_price.id,
                     client_list_price.id_client,
                     client_list_price.id_list_price
-                ))
+                )
+                for client_list_price in client_list_prices
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO ClientListPrice (
+                    Id, IdClient, IdListPrice
+                ) VALUES (?, ?, ?)
+            """, client_list_price_data)
 
             self.connection.commit()
             count = len(client_list_prices)
-            logger.info(f"Insertados {count} client list prices")
+            logger.info(f"Insertados {count} client list prices en batch")
             return count
 
         except sqlite3.Error as e:
@@ -485,7 +540,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_locations(self, locations: List[Location]) -> int:
-        """Inserta ubicaciones en la base de datos."""
+        """Inserta ubicaciones en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -496,18 +551,9 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for location in locations:
-                cursor.execute("""
-                    INSERT INTO Location (
-                        Id, Slug, Name, Tel, Email, Code, Sequence, Format, Zone, Use,
-                        Category, TypeLocation, Street, ExtNumber, IntNumber, Suburb,
-                        CodePostal, City, State, Country, Lat, Lng, Geofence,
-                        SequenceTimesFrom1, SequenceTimesUpTo1, SequenceTimesFrom2,
-                        SequenceTimesUpTo2, SequenceTimesFrom3, SequenceTimesUpTo3,
-                        IsPaySun, IsPayMon, IsPayTues, IsPayWed, IsPayThurs, IsPayFri,
-                        IsPaySat, Seller, Checked
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            location_data = [
+                (
                     location.id,
                     location.slug,
                     location.name,
@@ -546,11 +592,26 @@ class SQLiteBuilder(ISQLiteBuilder):
                     1 if location.is_pay_sat else 0,
                     location.seller,
                     1 if location.checked else 0
-                ))
+                )
+                for location in locations
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO Location (
+                    Id, Slug, Name, Tel, Email, Code, Sequence, Format, Zone, Use,
+                    Category, TypeLocation, Street, ExtNumber, IntNumber, Suburb,
+                    CodePostal, City, State, Country, Lat, Lng, Geofence,
+                    SequenceTimesFrom1, SequenceTimesUpTo1, SequenceTimesFrom2,
+                    SequenceTimesUpTo2, SequenceTimesFrom3, SequenceTimesUpTo3,
+                    IsPaySun, IsPayMon, IsPayTues, IsPayWed, IsPayThurs, IsPayFri,
+                    IsPaySat, Seller, Checked
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, location_data)
 
             self.connection.commit()
             count = len(locations)
-            logger.info(f"Insertados {count} locations")
+            logger.info(f"Insertados {count} locations en batch")
             return count
 
         except sqlite3.Error as e:
@@ -559,7 +620,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_cobranzas(self, cobranzas: List[Cobranza]) -> int:
-        """Inserta cobranzas en la base de datos."""
+        """Inserta cobranzas en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -570,23 +631,29 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for cobranza in cobranzas:
-                cursor.execute("""
-                    INSERT INTO Cobranza (
-                        Id, IdClient, BillNumber, Total, Issue, Validity
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            cobranza_data = [
+                (
                     cobranza.id,
                     cobranza.id_client,
                     cobranza.bill_number,
                     cobranza.total,
                     cobranza.issue,
                     cobranza.validity
-                ))
+                )
+                for cobranza in cobranzas
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO Cobranza (
+                    Id, IdClient, BillNumber, Total, Issue, Validity
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, cobranza_data)
 
             self.connection.commit()
             count = len(cobranzas)
-            logger.info(f"Insertados {count} cobranzas")
+            logger.info(f"Insertados {count} cobranzas en batch")
             return count
 
         except sqlite3.Error as e:
@@ -595,7 +662,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             raise
 
     def insert_cobranza_details(self, cobranza_details: List[CobranzaDetail]) -> int:
-        """Inserta detalles de cobranza en la base de datos."""
+        """Inserta detalles de cobranza en la base de datos usando batch insert."""
         if not self.connection:
             raise RuntimeError("No hay conexión activa a SQLite")
 
@@ -606,22 +673,28 @@ class SQLiteBuilder(ISQLiteBuilder):
         try:
             cursor = self.connection.cursor()
 
-            for detail in cobranza_details:
-                cursor.execute("""
-                    INSERT INTO CobranzaDetail (
-                        Id, IdCobranza, IdProduct, Amount, Price
-                    ) VALUES (?, ?, ?, ?, ?)
-                """, (
+            # Preparar datos para batch insert
+            detail_data = [
+                (
                     detail.id,
                     detail.id_cobranza,
                     detail.id_product,
                     detail.amount,
                     detail.price
-                ))
+                )
+                for detail in cobranza_details
+            ]
+
+            # Batch insert
+            cursor.executemany("""
+                INSERT INTO CobranzaDetail (
+                    Id, IdCobranza, IdProduct, Amount, Price
+                ) VALUES (?, ?, ?, ?, ?)
+            """, detail_data)
 
             self.connection.commit()
             count = len(cobranza_details)
-            logger.info(f"Insertados {count} cobranza details")
+            logger.info(f"Insertados {count} cobranza details en batch")
             return count
 
         except sqlite3.Error as e:
