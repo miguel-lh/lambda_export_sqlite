@@ -54,6 +54,9 @@ class ExportService:
         """
         start_time = time.time()
         records_exported: Dict[str, int] = {}
+        postgres_fetch_time_ms = 0
+        sqlite_build_time_ms = 0
+        fetch_times_by_table: Dict[str, int] = {}
 
         try:
             # Paso 1: Conectar a PostgreSQL
@@ -62,6 +65,7 @@ class ExportService:
 
             # Paso 2: Obtener datos de PostgreSQL en paralelo
             logger.info("Obteniendo datos de PostgreSQL en paralelo")
+            postgres_start_time = time.time()
 
             # Definir todas las queries a ejecutar
             fetch_tasks = {
@@ -87,7 +91,9 @@ class ExportService:
                 for future in as_completed(future_to_entity):
                     entity_name = future_to_entity[future]
                     try:
-                        results[entity_name] = future.result()
+                        data, elapsed_ms = future.result()
+                        results[entity_name] = data
+                        fetch_times_by_table[entity_name] = elapsed_ms
                     except Exception as e:
                         logger.error(f"Error obteniendo {entity_name}: {e}")
                         raise
@@ -116,19 +122,34 @@ class ExportService:
                 'cobranza_details': len(cobranza_details)
             }
 
+            # Calcular tiempo de extracción de PostgreSQL
+            postgres_fetch_time_ms = int((time.time() - postgres_start_time) * 1000)
+            logger.info(f"Datos obtenidos de PostgreSQL en {postgres_fetch_time_ms}ms")
+
+            # Log tiempos individuales
+            logger.info("Tiempos de extracción por tabla:")
+            for table_name, table_time in sorted(fetch_times_by_table.items(), key=lambda x: x[1], reverse=True):
+                logger.info(f"  - {table_name}: {table_time}ms")
+
             # Validar que hay datos para exportar
             total_records = sum(records_exported.values())
             if total_records == 0:
                 logger.warning(f"No se encontraron datos para tenant {tenant_id}")
+                query_timings_detailed = self.data_repository.get_query_timings()
                 return ExportResult(
                     success=False,
                     error_message=f"No se encontraron datos para el tenant {tenant_id}",
                     records_exported=records_exported,
-                    execution_time_ms=int((time.time() - start_time) * 1000)
+                    execution_time_ms=int((time.time() - start_time) * 1000),
+                    postgres_fetch_time_ms=postgres_fetch_time_ms,
+                    sqlite_build_time_ms=0,
+                    fetch_times_by_table=fetch_times_by_table,
+                    query_timings_detailed=query_timings_detailed
                 )
 
             # Paso 3: Crear base de datos SQLite
             logger.info(f"Creando base de datos SQLite en {output_path}")
+            sqlite_start_time = time.time()
             self._create_sqlite_database(output_path)
 
             # Paso 4: Insertar datos en SQLite (en orden correcto por relaciones)
@@ -145,16 +166,25 @@ class ExportService:
                 cobranza_details=cobranza_details
             )
 
+            # Calcular tiempo de construcción de SQLite
+            sqlite_build_time_ms = int((time.time() - sqlite_start_time) * 1000)
+            logger.info(f"Base de datos SQLite construida en {sqlite_build_time_ms}ms")
+
             # Paso 5: Obtener tamaño del archivo
             file_size = os.path.getsize(output_path) if os.path.exists(output_path) else None
 
             execution_time_ms = int((time.time() - start_time) * 1000)
 
+            # Obtener timings detallados del repositorio
+            query_timings_detailed = self.data_repository.get_query_timings()
+
             logger.info(
                 f"Exportación completada exitosamente. "
                 f"Registros: {records_exported}, "
                 f"Tamaño: {file_size} bytes, "
-                f"Tiempo: {execution_time_ms}ms"
+                f"Tiempo total: {execution_time_ms}ms, "
+                f"Tiempo PostgreSQL: {postgres_fetch_time_ms}ms, "
+                f"Tiempo SQLite: {sqlite_build_time_ms}ms"
             )
 
             return ExportResult(
@@ -162,16 +192,30 @@ class ExportService:
                 file_path=output_path,
                 file_size=file_size,
                 records_exported=records_exported,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
+                postgres_fetch_time_ms=postgres_fetch_time_ms,
+                sqlite_build_time_ms=sqlite_build_time_ms,
+                fetch_times_by_table=fetch_times_by_table,
+                query_timings_detailed=query_timings_detailed
             )
 
         except Exception as e:
             logger.error(f"Error durante la exportación: {str(e)}", exc_info=True)
+            # Intentar obtener timings detallados incluso en caso de error
+            try:
+                query_timings_detailed = self.data_repository.get_query_timings()
+            except:
+                query_timings_detailed = {}
+
             return ExportResult(
                 success=False,
                 error_message=str(e),
                 records_exported=records_exported,
-                execution_time_ms=int((time.time() - start_time) * 1000)
+                execution_time_ms=int((time.time() - start_time) * 1000),
+                postgres_fetch_time_ms=postgres_fetch_time_ms,
+                sqlite_build_time_ms=sqlite_build_time_ms,
+                fetch_times_by_table=fetch_times_by_table,
+                query_timings_detailed=query_timings_detailed
             )
 
         finally:
@@ -193,20 +237,24 @@ class ExportService:
 
     def _fetch_data(self, entity_name: str, fetch_fn):
         """
-        Obtiene datos del repositorio con manejo de errores.
+        Obtiene datos del repositorio con manejo de errores y medición de tiempo.
 
         Args:
             entity_name: Nombre de la entidad (para logging)
             fetch_fn: Función que obtiene los datos
 
         Returns:
-            Lista de datos
+            Tupla (datos, tiempo_ms): Lista de datos y tiempo de ejecución en milisegundos
 
         Raises:
             ExportError: Si hay error obteniendo los datos
         """
         try:
-            return fetch_fn()
+            start = time.time()
+            data = fetch_fn()
+            elapsed_ms = int((time.time() - start) * 1000)
+            logger.info(f"Obtenidos {len(data)} registros de {entity_name} en {elapsed_ms}ms")
+            return data, elapsed_ms
         except Exception as e:
             logger.error(f"Error obteniendo {entity_name}: {e}")
             raise ExportError(f"Error obteniendo {entity_name}: {str(e)}")

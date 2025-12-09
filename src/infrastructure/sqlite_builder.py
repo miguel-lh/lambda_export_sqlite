@@ -155,6 +155,7 @@ class SQLiteBuilder(ISQLiteBuilder):
                     IdPriceList INTEGER,
                     IdProduct INTEGER,
                     Price TEXT,
+                    IsVatApplicable INTEGER,
                     FOREIGN KEY (IdProduct) REFERENCES Product (Id)
                 )
             """)
@@ -478,7 +479,8 @@ class SQLiteBuilder(ISQLiteBuilder):
                     detail.id,
                     detail.id_price_list,
                     detail.id_product,
-                    detail.price
+                    detail.price,
+                    1 if detail.is_vat_applicable else 0
                 )
                 for detail in list_price_details
             ]
@@ -486,8 +488,8 @@ class SQLiteBuilder(ISQLiteBuilder):
             # Batch insert
             cursor.executemany("""
                 INSERT INTO ListPriceDetail (
-                    Id, IdPriceList, IdProduct, Price
-                ) VALUES (?, ?, ?, ?)
+                    Id, IdPriceList, IdProduct, Price, IsVatApplicable
+                ) VALUES (?, ?, ?, ?, ?)
             """, detail_data)
 
             self.connection.commit()

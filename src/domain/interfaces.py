@@ -4,7 +4,7 @@ Siguiendo el principio de Inversión de Dependencias (DIP) de SOLID.
 Las capas de alto nivel dependen de abstracciones, no de implementaciones concretas.
 """
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, Any
 
 from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
@@ -71,6 +71,11 @@ class IDataRepository(ABC):
     @abstractmethod
     def get_cobranza_details_by_tenant(self, tenant_id: int) -> List[CobranzaDetail]:
         """Obtiene todos los detalles de cobranza de un tenant."""
+        pass
+
+    @abstractmethod
+    def get_query_timings(self) -> Dict[str, Dict[str, float]]:
+        """Retorna los timings detallados de las queries ejecutadas."""
         pass
 
 

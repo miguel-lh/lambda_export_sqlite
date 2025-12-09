@@ -94,6 +94,7 @@ class ListPriceDetail:
     id_price_list: int
     id_product: int
     price: Optional[str] = None
+    is_vat_applicable: Optional[bool] = None
 
 
 @dataclass
@@ -182,6 +183,10 @@ class ExportResult:
     records_exported: dict = field(default_factory=dict)
     error_message: Optional[str] = None
     execution_time_ms: Optional[int] = None
+    postgres_fetch_time_ms: Optional[int] = None
+    sqlite_build_time_ms: Optional[int] = None
+    fetch_times_by_table: dict = field(default_factory=dict)
+    query_timings_detailed: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         """Convierte el resultado a diccionario."""
@@ -191,5 +196,9 @@ class ExportResult:
             'file_size': self.file_size,
             'records_exported': self.records_exported,
             'error_message': self.error_message,
-            'execution_time_ms': self.execution_time_ms
+            'execution_time_ms': self.execution_time_ms,
+            'postgres_fetch_time_ms': self.postgres_fetch_time_ms,
+            'sqlite_build_time_ms': self.sqlite_build_time_ms,
+            'fetch_times_by_table': self.fetch_times_by_table,
+            'query_timings_detailed': self.query_timings_detailed
         }

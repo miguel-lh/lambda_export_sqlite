@@ -39,7 +39,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         settings = get_settings()
 
         # Crear ruta temporal para el archivo SQLite
-        output_path = os.path.join(settings.temp_dir, f"tenant_{tenant_id}.sqlite")
+        output_path = os.path.join(settings.temp_dir, f"database_catalog_master_{tenant_id}.sqlite")
 
         # Crear dependencias (Inyección de Dependencias)
         postgres_repo = _create_postgres_repository(settings)
@@ -79,14 +79,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/octet-stream',
-                'Content-Disposition': f'attachment; filename="tenant_{tenant_id}.sqlite"',
+                'Content-Disposition': f'attachment; filename="database_catalog_master_{tenant_id}.sqlite"',
                 'Access-Control-Allow-Origin': '*',
                 'X-Tenant-Id': str(tenant_id),
                 'X-File-Size': str(result.file_size),
-                'X-Execution-Time-Ms': str(result.execution_time_ms)
+                'X-Execution-Time-Ms': str(result.execution_time_ms),
+                'X-Postgres-Fetch-Time-Ms': str(result.postgres_fetch_time_ms),
+                'X-Sqlite-Build-Time-Ms': str(result.sqlite_build_time_ms)
             },
             'body': sqlite_base64,
-            'isBase64Encoded': True
+            'isBase64Encoded': True,
+            'metadata': result.to_dict()  # Agregar metadata para test_local
         }
 
     except ValueError as e:
