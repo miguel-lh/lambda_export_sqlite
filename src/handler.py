@@ -88,8 +88,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'X-Sqlite-Build-Time-Ms': str(result.sqlite_build_time_ms)
             },
             'body': sqlite_base64,
-            'isBase64Encoded': True,
-            'metadata': result.to_dict()  # Agregar metadata para test_local
+            'isBase64Encoded': True
         }
 
     except ValueError as e:
