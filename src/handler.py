@@ -76,16 +76,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             os.remove(output_path)
             logger.info(f"Archivo temporal eliminado: {output_path}")
 
-        # Retornar respuesta con archivo
+        # Retornar respuesta con archivo binario
+        # API Gateway decodificará automáticamente el base64 a binario
+        # cuando el Content-Type esté en BinaryMediaTypes
         logger.info(f"Exportación exitosa: {result.to_dict()}")
         return {
             'statusCode': 200,
             'headers': {
-                'Content-Type': 'application/octet-stream',
+                'Content-Type': 'application/x-sqlite3',  # Tipo MIME específico para SQLite
                 'Content-Disposition': f'attachment; filename="database_catalog_master_{tenant_id}.sqlite"',
-                'Content-Length': str(binary_size),  # Size of binary file (prevents compression)
-                'Cache-Control': 'no-transform',  # Prevents intermediary compression
+                'Content-Length': str(binary_size),
+                'Cache-Control': 'no-cache, no-store, no-transform',
                 'Access-Control-Allow-Origin': '*',
+                'Access-Control-Expose-Headers': 'Content-Length, Content-Type, X-File-Size',
                 'X-Tenant-Id': str(tenant_id),
                 'X-File-Size': str(result.file_size),
                 'X-Execution-Time-Ms': str(result.execution_time_ms),
@@ -93,7 +96,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'X-Sqlite-Build-Time-Ms': str(result.sqlite_build_time_ms)
             },
             'body': sqlite_base64,
-            'isBase64Encoded': True
+            'isBase64Encoded': True  # API Gateway decodificará esto a binario puro
         }
 
     except ValueError as e:
