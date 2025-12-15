@@ -66,6 +66,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         with open(output_path, 'rb') as f:
             sqlite_data = f.read()
 
+        # Guardar el tamaño del archivo binario original
+        binary_size = len(sqlite_data)
+
         sqlite_base64 = base64.b64encode(sqlite_data).decode('utf-8')
 
         # Limpiar archivo temporal
@@ -80,6 +83,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': {
                 'Content-Type': 'application/octet-stream',
                 'Content-Disposition': f'attachment; filename="database_catalog_master_{tenant_id}.sqlite"',
+                'Content-Length': str(binary_size),  # Size of binary file (prevents compression)
+                'Cache-Control': 'no-transform',  # Prevents intermediary compression
                 'Access-Control-Allow-Origin': '*',
                 'X-Tenant-Id': str(tenant_id),
                 'X-File-Size': str(result.file_size),

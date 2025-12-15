@@ -83,6 +83,7 @@ Resources:
     Properties:
       Name: !Sub '${Environment}-export-api'
       StageName: !Ref Environment
+      MinimumCompressionSize: 10485760  # 10MB - effectively disables compression for SQLite files
       Cors:
         AllowMethods: "'GET, OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
