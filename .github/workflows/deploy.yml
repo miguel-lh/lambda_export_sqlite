@@ -51,7 +51,26 @@ jobs:
               PostgresUser=${{ secrets.POSTGRES_USER_PROD }} \
               PostgresPassword=${{ secrets.POSTGRES_PASSWORD_PROD }}
 
+      - name: Get deployment error details
+        if: failure()
+        run: |
+          echo "Deployment failed! Getting CloudFormation events..."
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ secrets.STACK_NAME_PROD }} \
+            --region ${{ secrets.AWS_REGION_PROD }} \
+            --max-items 30 \
+            --output table || echo "Stack does not exist yet or cannot retrieve events"
+
+          echo ""
+          echo "Checking for failed resources..."
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ secrets.STACK_NAME_PROD }} \
+            --region ${{ secrets.AWS_REGION_PROD }} \
+            --query 'StackEvents[?contains(ResourceStatus, `FAILED`)].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "No failed events found"
+
       - name: Get API endpoint
+        if: success()
         run: |
           echo "PRODUCTION Deployment complete!"
           aws cloudformation describe-stacks \
