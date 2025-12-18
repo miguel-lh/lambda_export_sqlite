@@ -24,6 +24,7 @@ Parameters:
     Default: dev
     AllowedValues:
       - dev
+      - dev2
       - prod
     Description: Environment name
 
