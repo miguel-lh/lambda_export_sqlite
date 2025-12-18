@@ -1,9 +1,9 @@
-name: Deploy to AWS Lambda (PRODUCTION)
+name: Deploy to AWS Lambda (DEV)
 
 on:
   push:
     branches:
-      - main
+      - development
 
 jobs:
   deploy:
@@ -26,36 +26,36 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-          aws-region: ${{ secrets.AWS_REGION_PROD }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+          aws-region: ${{ secrets.AWS_REGION_DEV }}
 
       - name: Build SAM application
         run: sam build --use-container
 
-      - name: Deploy SAM application (PRODUCTION)
+      - name: Deploy SAM application (DEV)
         run: |
           sam deploy \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --force-upload \
-            --stack-name ${{ secrets.STACK_NAME_PROD }} \
-            --s3-bucket ${{ secrets.SAM_ARTIFACTS_BUCKET_PROD }} \
+            --stack-name ${{ secrets.STACK_NAME_DEV }} \
+            --s3-bucket ${{ secrets.SAM_ARTIFACTS_BUCKET_DEV }} \
             --capabilities CAPABILITY_IAM \
-            --region ${{ secrets.AWS_REGION_PROD }} \
+            --region ${{ secrets.AWS_REGION_DEV }} \
             --parameter-overrides \
-              Environment=prod \
-              PostgresHost=${{ secrets.POSTGRES_HOST_PROD }} \
-              PostgresPort=${{ secrets.POSTGRES_PORT_PROD }} \
-              PostgresDatabase=${{ secrets.POSTGRES_DATABASE_PROD }} \
-              PostgresUser=${{ secrets.POSTGRES_USER_PROD }} \
-              PostgresPassword=${{ secrets.POSTGRES_PASSWORD_PROD }}
+              Environment=dev \
+              PostgresHost=${{ secrets.POSTGRES_HOST_DEV }} \
+              PostgresPort=${{ secrets.POSTGRES_PORT_DEV }} \
+              PostgresDatabase=${{ secrets.POSTGRES_DATABASE_DEV }} \
+              PostgresUser=${{ secrets.POSTGRES_USER_DEV }} \
+              PostgresPassword=${{ secrets.POSTGRES_PASSWORD_DEV }}
 
       - name: Get API endpoint
         run: |
-          echo "PRODUCTION Deployment complete!"
+          echo "DEV Deployment complete!"
           aws cloudformation describe-stacks \
-            --stack-name ${{ secrets.STACK_NAME_PROD }} \
+            --stack-name ${{ secrets.STACK_NAME_DEV }} \
             --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
             --output text \
-            --region ${{ secrets.AWS_REGION_PROD }}
+            --region ${{ secrets.AWS_REGION_DEV }}
