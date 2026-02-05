@@ -318,7 +318,6 @@ class PostgresRepository(IDataRepository):
             WHERE
                 pp.is_removed = FALSE
                 AND pp.delete_at IS NULL
-                AND pp.type = ANY(%s)
             ORDER BY pp.id;
         """
 
@@ -328,14 +327,11 @@ class PostgresRepository(IDataRepository):
             # OPTIMIZADO: Cursor normal para reducir overhead de red
             # Para 1279 registros, cursor normal evita overhead de server-side cursor
             with self.connection.cursor() as cursor:
-                # Pasar lista de Python que psycopg2 convertirá a array de PostgreSQL
-                product_types = ['Ensamblaje', 'Artículo de inventario', 'Assembly', 'Inventory Item', 'Servicio', 'Service']
-                logger.debug(f"[PRODUCTS] Ejecutando query con product_types={product_types}")
                 logger.debug(f"[PRODUCTS] Query: {query.strip()}")
 
                 # Medir tiempo de execute
                 execute_start = time.time()
-                cursor.execute(query, (product_types,))
+                cursor.execute(query)
                 execute_time = (time.time() - execute_start) * 1000
 
                 # Medir tiempo de fetchall
