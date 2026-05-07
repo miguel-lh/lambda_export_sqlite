@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 
 from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
-    ClientListPrice, Location, Cobranza, CobranzaDetail
+    ClientListPrice, Location, Cobranza, CobranzaDetail, Economico
 )
 
 
@@ -71,6 +71,11 @@ class IDataRepository(ABC):
     @abstractmethod
     def get_cobranza_details_by_tenant(self, tenant_id: int) -> List[CobranzaDetail]:
         """Obtiene todos los detalles de cobranza de un tenant."""
+        pass
+
+    @abstractmethod
+    def get_economicos_by_tenant(self, tenant_id: int) -> List[Economico]:
+        """Obtiene todos los economicos (vehiculos type_vehicle=4) de un tenant."""
         pass
 
     @abstractmethod
@@ -138,6 +143,11 @@ class ISQLiteBuilder(ABC):
     @abstractmethod
     def insert_cobranza_details(self, cobranza_details: List[CobranzaDetail]) -> int:
         """Inserta detalles de cobranza en la base de datos."""
+        pass
+
+    @abstractmethod
+    def insert_economicos(self, economicos: List[Economico]) -> int:
+        """Inserta economicos en la base de datos."""
         pass
 
     @abstractmethod
