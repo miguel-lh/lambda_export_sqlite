@@ -77,7 +77,8 @@ class ExportService:
                 'client_list_prices': lambda: self.data_repository.get_client_list_prices_by_tenant(tenant_id),
                 'locations': lambda: self.data_repository.get_locations_by_tenant(tenant_id),
                 'cobranzas': lambda: self.data_repository.get_cobranzas_by_tenant(tenant_id),
-                'cobranza_details': lambda: self.data_repository.get_cobranza_details_by_tenant(tenant_id)
+                'cobranza_details': lambda: self.data_repository.get_cobranza_details_by_tenant(tenant_id),
+                'economicos': lambda: self.data_repository.get_economicos_by_tenant(tenant_id)
             }
 
             # Ejecutar queries en paralelo
@@ -108,6 +109,7 @@ class ExportService:
             locations = results['locations']
             cobranzas = results['cobranzas']
             cobranza_details = results['cobranza_details']
+            economicos = results['economicos']
 
             # Registrar conteos
             records_exported = {
@@ -119,7 +121,8 @@ class ExportService:
                 'client_list_prices': len(client_list_prices),
                 'locations': len(locations),
                 'cobranzas': len(cobranzas),
-                'cobranza_details': len(cobranza_details)
+                'cobranza_details': len(cobranza_details),
+                'economicos': len(economicos)
             }
 
             # Calcular tiempo de extracción de PostgreSQL
@@ -163,7 +166,8 @@ class ExportService:
                 client_list_prices=client_list_prices,
                 locations=locations,
                 cobranzas=cobranzas,
-                cobranza_details=cobranza_details
+                cobranza_details=cobranza_details,
+                economicos=economicos
             )
 
             # Calcular tiempo de construcción de SQLite
@@ -286,7 +290,8 @@ class ExportService:
         client_list_prices,
         locations,
         cobranzas,
-        cobranza_details
+        cobranza_details,
+        economicos
     ) -> None:
         """
         Inserta todos los datos en SQLite.
@@ -303,6 +308,7 @@ class ExportService:
             self.sqlite_builder.insert_bank_accounts(bank_accounts)
             self.sqlite_builder.insert_list_prices(list_prices)
             self.sqlite_builder.insert_locations(locations)
+            self.sqlite_builder.insert_economicos(economicos)
 
             # 2. Insertar tablas con foreign keys a las bases
             self.sqlite_builder.insert_list_price_details(list_price_details)

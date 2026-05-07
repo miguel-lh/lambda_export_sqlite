@@ -174,6 +174,15 @@ class CobranzaDetail:
 
 
 @dataclass
+class Economico:
+    """Modelo de dominio para Economico (Vehiculo type_vehicle=4)."""
+
+    id: int
+    economic: Optional[str] = None
+    license_plates: Optional[str] = None
+
+
+@dataclass
 class ExportResult:
     """Resultado de la operación de exportación."""
 

@@ -58,7 +58,7 @@ from psycopg2.extras import RealDictCursor
 from domain.interfaces import IDataRepository
 from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
-    ClientListPrice, Location, Cobranza, CobranzaDetail
+    ClientListPrice, Location, Cobranza, CobranzaDetail, Economico
 )
 
 logger = logging.getLogger(__name__)
@@ -967,4 +967,65 @@ class PostgresRepository(IDataRepository):
 
         except psycopg2.Error as e:
             logger.error(f"Error obteniendo cobranza details: {e}")
+            raise
+
+    def get_economicos_by_tenant(self, tenant_id: int) -> List[Economico]:
+        """Obtiene todos los economicos (vehiculos type_vehicle=4) de un tenant."""
+        if not self.connection:
+            raise RuntimeError("No hay conexion activa a PostgreSQL")
+
+        query = """
+            SELECT
+                id,
+                economic,
+                license_plates
+            FROM truck_truck
+            WHERE parent_id = %s
+              AND type_vehicle = '4'
+              AND is_removed = FALSE
+            ORDER BY id
+        """
+
+        try:
+            function_start = time.time()
+
+            with self.connection.cursor() as cursor:
+                logger.debug(f"[ECONOMICOS] Ejecutando query con tenant_id={tenant_id}")
+                logger.debug(f"[ECONOMICOS] Query: {query.strip()}")
+
+                execute_start = time.time()
+                cursor.execute(query, (tenant_id,))
+                execute_time = (time.time() - execute_start) * 1000
+
+                fetch_start = time.time()
+                rows = cursor.fetchall()
+                fetch_time = (time.time() - fetch_start) * 1000
+
+            process_start = time.time()
+            economicos = [
+                Economico(
+                    id=row['id'],
+                    economic=row.get('economic'),
+                    license_plates=row.get('license_plates')
+                )
+                for row in rows
+            ]
+            process_time = (time.time() - process_start) * 1000
+
+            total_time = (time.time() - function_start) * 1000
+
+            self.query_timings['economicos'] = {
+                'execute_time_ms': execute_time,
+                'fetch_time_ms': fetch_time,
+                'process_time_ms': process_time,
+                'db_time_ms': execute_time + fetch_time,
+                'total_time_ms': total_time
+            }
+
+            logger.info(f"Obtenidos {len(economicos)} economicos para tenant {tenant_id}")
+            logger.debug(f"[ECONOMICOS] Tiempos - Execute: {execute_time:.2f}ms, Fetch: {fetch_time:.2f}ms, Process: {process_time:.2f}ms, Total: {total_time:.2f}ms")
+            return economicos
+
+        except psycopg2.Error as e:
+            logger.error(f"Error obteniendo economicos: {e}")
             raise

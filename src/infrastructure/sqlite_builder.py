@@ -9,7 +9,7 @@ from typing import List, Optional
 from domain.interfaces import ISQLiteBuilder
 from domain.models import (
     Customer, Product, BankAccount, ListPrice, ListPriceDetail,
-    ClientListPrice, Location, Cobranza, CobranzaDetail
+    ClientListPrice, Location, Cobranza, CobranzaDetail, Economico
 )
 
 logger = logging.getLogger(__name__)
@@ -237,6 +237,15 @@ class SQLiteBuilder(ISQLiteBuilder):
                     Price TEXT,
                     FOREIGN KEY (IdCobranza) REFERENCES Cobranza (Id),
                     FOREIGN KEY (IdProduct) REFERENCES Product (Id)
+                )
+            """)
+
+            # Tabla Economicos (vehiculos type_vehicle=4)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS economicos (
+                    Id INTEGER PRIMARY KEY,
+                    Economic TEXT,
+                    LicensePlates TEXT
                 )
             """)
             
@@ -701,6 +710,43 @@ class SQLiteBuilder(ISQLiteBuilder):
 
         except sqlite3.Error as e:
             logger.error(f"Error insertando cobranza details: {e}")
+            self.connection.rollback()
+            raise
+
+    def insert_economicos(self, economicos: List[Economico]) -> int:
+        """Inserta economicos en la base de datos usando batch insert."""
+        if not self.connection:
+            raise RuntimeError("No hay conexion activa a SQLite")
+
+        if not economicos:
+            logger.warning("No hay economicos para insertar")
+            return 0
+
+        try:
+            cursor = self.connection.cursor()
+
+            economico_data = [
+                (
+                    economico.id,
+                    economico.economic,
+                    economico.license_plates
+                )
+                for economico in economicos
+            ]
+
+            cursor.executemany("""
+                INSERT INTO economicos (
+                    Id, Economic, LicensePlates
+                ) VALUES (?, ?, ?)
+            """, economico_data)
+
+            self.connection.commit()
+            count = len(economicos)
+            logger.info(f"Insertados {count} economicos en batch")
+            return count
+
+        except sqlite3.Error as e:
+            logger.error(f"Error insertando economicos: {e}")
             self.connection.rollback()
             raise
 
