@@ -980,8 +980,7 @@ class PostgresRepository(IDataRepository):
                 economic,
                 license_plates
             FROM truck_truck
-            WHERE parent_id = %s
-              AND type_vehicle = '4'
+            WHERE type_vehicle = '4'
               AND is_removed = FALSE
             ORDER BY id
         """
@@ -990,11 +989,11 @@ class PostgresRepository(IDataRepository):
             function_start = time.time()
 
             with self.connection.cursor() as cursor:
-                logger.debug(f"[ECONOMICOS] Ejecutando query con tenant_id={tenant_id}")
+                logger.debug(f"[ECONOMICOS] Ejecutando query (sin filtro de tenant)")
                 logger.debug(f"[ECONOMICOS] Query: {query.strip()}")
 
                 execute_start = time.time()
-                cursor.execute(query, (tenant_id,))
+                cursor.execute(query)
                 execute_time = (time.time() - execute_start) * 1000
 
                 fetch_start = time.time()

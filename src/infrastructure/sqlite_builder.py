@@ -240,9 +240,9 @@ class SQLiteBuilder(ISQLiteBuilder):
                 )
             """)
 
-            # Tabla Economicos (vehiculos type_vehicle=4)
+            # Tabla Economico (vehiculos type_vehicle=4)
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS economicos (
+                CREATE TABLE IF NOT EXISTS Economico (
                     Id INTEGER PRIMARY KEY,
                     Economic TEXT,
                     LicensePlates TEXT
@@ -735,7 +735,7 @@ class SQLiteBuilder(ISQLiteBuilder):
             ]
 
             cursor.executemany("""
-                INSERT INTO economicos (
+                INSERT INTO Economico (
                     Id, Economic, LicensePlates
                 ) VALUES (?, ?, ?)
             """, economico_data)
