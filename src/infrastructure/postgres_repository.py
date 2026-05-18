@@ -728,23 +728,20 @@ class PostgresRepository(IDataRepository):
                 is_pay_sat,
                 seller,
                 checked
-            FROM location_location  -- ADAPTA el nombre de la tabla
-            WHERE parent_id = %s  AND is_removed = FALSE
+            FROM location_location
+            WHERE is_removed = FALSE
             ORDER BY id
         """
 
         try:
             function_start = time.time()
 
-            # Usar cursor normal (client-side) en vez de server-side
-            # Para 14 registros, cursor normal es mucho más eficiente
             with self.connection.cursor() as cursor:
                 logger.debug(f"[LOCATIONS] Ejecutando query con tenant_id={tenant_id}")
                 logger.debug(f"[LOCATIONS] Query: {query.strip()}")
 
-                # Medir tiempo de execute
                 execute_start = time.time()
-                cursor.execute(query, (tenant_id,))
+                cursor.execute(query)
                 execute_time = (time.time() - execute_start) * 1000
 
                 # Medir tiempo de fetchall
