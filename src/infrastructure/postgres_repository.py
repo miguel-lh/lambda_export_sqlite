@@ -729,7 +729,7 @@ class PostgresRepository(IDataRepository):
                 seller,
                 checked
             FROM location_location  -- ADAPTA el nombre de la tabla
-            WHERE parent_id = %s  AND is_removed = FALSE
+            WHERE is_removed = FALSE
             ORDER BY id
         """
 
@@ -744,7 +744,7 @@ class PostgresRepository(IDataRepository):
 
                 # Medir tiempo de execute
                 execute_start = time.time()
-                cursor.execute(query, (tenant_id,))
+                cursor.execute(query)
                 execute_time = (time.time() - execute_start) * 1000
 
                 # Medir tiempo de fetchall
