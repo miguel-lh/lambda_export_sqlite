@@ -181,7 +181,7 @@ class PostgresRepository(IDataRepository):
                 country,
                 lat,
                 lng,
-                geofence  -- OPTIMIZADO: Sin conversión ::text (solo 4 bytes, conversión innecesaria)
+                geofence,  -- OPTIMIZADO: Sin conversión ::text (solo 4 bytes, conversión innecesaria)
                 sequence_times_from_1,
                 sequence_times_up_to_1,
                 sequence_times_from_2,
@@ -712,7 +712,7 @@ class PostgresRepository(IDataRepository):
                 country,
                 lat,
                 lng,
-                geofence  -- OPTIMIZADO: Sin conversión ::text (solo 4 bytes, conversión innecesaria)
+                geofence,  -- OPTIMIZADO: Sin conversión ::text (solo 4 bytes, conversión innecesaria)
                 sequence_times_from_1,
                 sequence_times_up_to_1,
                 sequence_times_from_2,
